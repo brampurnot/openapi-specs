@@ -4,7 +4,7 @@ info:
   description: API for searching catalog items
   version: 1.0.0
 servers:
-  - url: https://api.example.com/v1
+  - url: https://mock.apidog.com/m1/1044590-1031883-default
     description: Production server
 paths:
   /catalog/search:
