@@ -1,0 +1,129 @@
+openapi: 3.0.3
+info:
+  title: Catalog Search API
+  description: API for searching catalog items
+  version: 1.0.0
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+paths:
+  /catalog/search:
+    get:
+      summary: Search catalog items
+      description: Search for catalog items using a search term
+      operationId: searchCatalog
+      tags:
+        - Catalog
+      parameters:
+        - name: searchTerm
+          in: query
+          description: Term to search for in catalog items
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            example: "laptop"
+      responses:
+        '200':
+          description: Successful search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalResults:
+                    type: integer
+                    description: Total number of results found
+                    example: 42
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CatalogItem'
+        '400':
+          description: Bad request - invalid search term
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    CatalogItem:
+      type: object
+      required:
+        - id
+        - name
+        - price
+        - unit
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the catalog item
+          example: "CAT-12345"
+        name:
+          type: string
+          description: Name of the catalog item
+          example: "Dell Latitude 5520 Laptop"
+        description:
+          type: string
+          description: Detailed description of the item
+          example: "15.6 inch business laptop with Intel i7 processor"
+        category:
+          type: string
+          description: Category of the item
+          example: "IT Equipment"
+        price:
+          type: number
+          format: double
+          description: Unit price of the item
+          minimum: 0
+          example: 1299.99
+        currency:
+          type: string
+          description: Currency code
+          default: "USD"
+          example: "USD"
+        unit:
+          type: string
+          description: Unit of measure
+          example: "EA"
+        manufacturer:
+          type: string
+          description: Manufacturer of the item
+          example: "Dell"
+        manufacturerPartNumber:
+          type: string
+          description: Manufacturer's part number
+          example: "LAT-5520-I7"
+        imageUrl:
+          type: string
+          format: uri
+          description: URL to item image
+          example: "https://images.example.com/cat-12345.jpg"
+        inStock:
+          type: boolean
+          description: Whether item is currently in stock
+          example: true
+        leadTime:
+          type: integer
+          description: Lead time in days
+          example: 5
+        
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_REQUEST"
+        message:
+          type: string
+          example: "Search term is required"

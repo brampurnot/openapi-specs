@@ -1,0 +1,249 @@
+openapi: 3.0.3
+info:
+  title: Purchase Requisition API
+  description: API for creating purchase requisitions
+  version: 1.0.0
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+paths:
+  /purchase-requisitions:
+    post:
+      summary: Create a purchase requisition
+      description: Create a new purchase requisition with line items
+      operationId: createPurchaseRequisition
+      tags:
+        - Purchase Requisition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRequisitionRequest'
+      responses:
+        '201':
+          description: Purchase requisition created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseRequisitionResponse'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    PurchaseRequisitionRequest:
+      type: object
+      required:
+        - requestor
+        - deliveryAddress
+        - lineItems
+      properties:
+        requestor:
+          type: object
+          required:
+            - name
+            - email
+          properties:
+            name:
+              type: string
+              description: Name of the requestor
+              example: "John Doe"
+            email:
+              type: string
+              format: email
+              description: Email of the requestor
+              example: "john.doe@example.com"
+            employeeId:
+              type: string
+              description: Employee ID of the requestor
+              example: "EMP-001234"
+        deliveryAddress:
+          type: object
+          required:
+            - street
+            - city
+            - postalCode
+            - country
+          properties:
+            street:
+              type: string
+              example: "123 Main Street"
+            city:
+              type: string
+              example: "New York"
+            state:
+              type: string
+              example: "NY"
+            postalCode:
+              type: string
+              example: "10001"
+            country:
+              type: string
+              example: "USA"
+        costCenter:
+          type: string
+          description: Cost center code
+          example: "CC-IT-001"
+        project:
+          type: string
+          description: Project code if applicable
+          example: "PROJ-2024-001"
+        justification:
+          type: string
+          description: Business justification for the purchase
+          example: "Required for new team members starting next month"
+        urgency:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+          default: MEDIUM
+          description: Urgency level of the request
+        lineItems:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/LineItem'
+            
+    LineItem:
+      type: object
+      required:
+        - itemType
+        - quantity
+        - unitPrice
+      properties:
+        itemType:
+          type: string
+          enum: [CATALOG, FREE_TEXT]
+          description: Type of line item
+          example: "CATALOG"
+        catalogItemId:
+          type: string
+          description: Required when itemType is CATALOG. ID from catalog search
+          example: "CAT-12345"
+        description:
+          type: string
+          description: Required when itemType is FREE_TEXT. Description of the item
+          example: "Custom consulting services"
+        category:
+          type: string
+          description: Category for free text items
+          example: "Professional Services"
+        quantity:
+          type: integer
+          minimum: 1
+          description: Quantity to order
+          example: 2
+        unit:
+          type: string
+          description: Unit of measure
+          default: "EA"
+          example: "EA"
+        unitPrice:
+          type: number
+          format: double
+          minimum: 0
+          description: Unit price
+          example: 1299.99
+        currency:
+          type: string
+          default: "USD"
+          description: Currency code
+          example: "USD"
+        totalPrice:
+          type: number
+          format: double
+          description: Total price (quantity * unitPrice). If not provided, will be calculated
+          example: 2599.98
+        notes:
+          type: string
+          description: Additional notes for this line item
+          example: "Preferred delivery by end of month"
+          
+    PurchaseRequisitionResponse:
+      type: object
+      properties:
+        requisitionId:
+          type: string
+          description: Unique identifier for the created requisition
+          example: "PR-2024-001234"
+        status:
+          type: string
+          enum: [PENDING_APPROVAL, APPROVED, REJECTED]
+          description: Current status of the requisition
+          example: "PENDING_APPROVAL"
+        totalAmount:
+          type: number
+          format: double
+          description: Total amount of the requisition
+          example: 5199.96
+        currency:
+          type: string
+          description: Currency of the total amount
+          example: "USD"
+        estimatedDeliveryDate:
+          type: string
+          format: date
+          description: Estimated delivery date for the items
+          example: "2024-09-15"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when requisition was created
+          example: "2024-08-21T10:30:00Z"
+        approvalRequired:
+          type: boolean
+          description: Whether approval is required based on amount/policies
+          example: true
+        links:
+          type: object
+          properties:
+            self:
+              type: string
+              format: uri
+              description: Link to view this requisition
+              example: "https://api.example.com/v1/purchase-requisitions/PR-2024-001234"
+            approval:
+              type: string
+              format: uri
+              description: Link to approval workflow if applicable
+              example: "https://api.example.com/v1/approvals/APR-2024-005678"
+              
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Invalid request data"
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: "lineItems[0].catalogItemId"
+              message:
+                type: string
+                example: "Catalog item ID is required for CATALOG type items"
