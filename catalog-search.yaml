@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Catalog Search API
-  description: API for searching catalog items
+  description: API for searching catalog items with rate limiting support
   version: 1.0.0
 servers:
   - url: https://mock.apidog.com/m1/1044590-1031883-default
@@ -10,7 +10,7 @@ paths:
   /catalog/search:
     get:
       summary: Search catalog items
-      description: Search for catalog items using a search term
+      description: Search for catalog items using a search term. Includes rate limiting for testing retry policies.
       operationId: searchCatalog
       tags:
         - Catalog
@@ -23,6 +23,23 @@ paths:
             type: string
             minLength: 1
             example: "laptop"
+        - name: retryTest
+          in: query
+          description: Enable retry testing mode (returns 429 on first attempt)
+          required: false
+          schema:
+            type: boolean
+            default: false
+            example: true
+        - name: attempt
+          in: query
+          description: Attempt number for retry testing
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
       responses:
         '200':
           description: Successful search results
@@ -45,6 +62,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '429':
+          description: Too Many Requests - Rate limit exceeded
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying
+              schema:
+                type: integer
+                example: 5
+            X-RateLimit-Limit:
+              description: Request limit per time window
+              schema:
+                type: integer
+                example: 100
+            X-RateLimit-Remaining:
+              description: Remaining requests in current window
+              schema:
+                type: integer
+                example: 0
+            X-RateLimit-Reset:
+              description: Unix timestamp when the rate limit resets
+              schema:
+                type: integer
+                example: 1643723400
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitError'
+              example:
+                error:
+                  code: 429
+                  message: "Too Many Requests - Rate limit exceeded"
+                  details: "Please retry after 5 seconds"
+                  timestamp: "2024-01-15T10:30:00.000Z"
+                  retryAfter: 5
         '500':
           description: Internal server error
           content:
@@ -127,3 +178,36 @@ components:
         message:
           type: string
           example: "Search term is required"
+    
+    RateLimitError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: integer
+              example: 429
+            message:
+              type: string
+              example: "Too Many Requests - Rate limit exceeded"
+            details:
+              type: string
+              example: "Please retry after 5 seconds"
+            timestamp:
+              type: string
+              format: date-time
+              example: "2024-01-15T10:30:00.000Z"
+            retryAfter:
+              type: integer
+              description: Seconds to wait before retrying
+              example: 5
+            attemptNumber:
+              type: integer
+              description: Current attempt number (for testing)
+              example: 1
