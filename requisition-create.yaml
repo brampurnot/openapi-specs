@@ -1,40 +1,61 @@
 openapi: 3.0.3
 info:
-  title: Purchase Requisition API
-  description: API for creating purchase requisitions
+  title: Catalog Search API
+  description: API for searching catalog items with rate limiting support and creating purchase requisitions
   version: 1.0.0
 servers:
-  - url: https://api.example.com/v1
+  - url: http://localhost:3069/m1/1044590-1031883-default
     description: Production server
 paths:
-  /purchase-requisitions:
+  /requisition/create:
     post:
       summary: Create a purchase requisition
-      description: Create a new purchase requisition with line items
-      operationId: createPurchaseRequisition
+      description: Create a new purchase requisition with specified items and delivery details
+      operationId: createRequisition
       tags:
-        - Purchase Requisition
+        - Requisition
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PurchaseRequisitionRequest'
+              $ref: '#/components/schemas/RequisitionRequest'
+            example:
+              requester:
+                id: "u-10023"
+                name: "Jane Doe"
+                email: "jane.doe@company.com"
+              currency: "USD"
+              neededBy: "2025-10-15"
+              shipTo:
+                name: "Main Warehouse"
+                addressLine1: "123 Example St"
+                city: "Austin"
+                state: "TX"
+                postalCode: "78701"
+                country: "US"
+              items:
+                - lineNo: 1
+                  catalogId: "CAT-000123"
+                  description: "USB-C Hub (6-port)"
+                  quantity: 2
+                  uom: "EA"
+                  unitPrice: 49.99
+                  currency: "USD"
+                  supplier:
+                    id: "SUP-1001"
+                    name: "Acme Supplies"
+                  commodityCode: "43211601"
+              justification: "New hires"
       responses:
         '201':
-          description: Purchase requisition created successfully
+          description: Requisition created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PurchaseRequisitionResponse'
+                $ref: '#/components/schemas/RequisitionResponse'
         '400':
-          description: Bad request - validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
+          description: Bad request - invalid requisition data
           content:
             application/json:
               schema:
@@ -48,182 +69,207 @@ paths:
 
 components:
   schemas:
-    PurchaseRequisitionRequest:
+    RequisitionRequest:
       type: object
       required:
-        - requestor
-        - deliveryAddress
-        - lineItems
+        - requester
+        - currency
+        - neededBy
+        - shipTo
+        - items
+        - justification
       properties:
-        requestor:
-          type: object
-          required:
-            - name
-            - email
-          properties:
-            name:
-              type: string
-              description: Name of the requestor
-              example: "John Doe"
-            email:
-              type: string
-              format: email
-              description: Email of the requestor
-              example: "john.doe@example.com"
-            employeeId:
-              type: string
-              description: Employee ID of the requestor
-              example: "EMP-001234"
-        deliveryAddress:
-          type: object
-          required:
-            - street
-            - city
-            - postalCode
-            - country
-          properties:
-            street:
-              type: string
-              example: "123 Main Street"
-            city:
-              type: string
-              example: "New York"
-            state:
-              type: string
-              example: "NY"
-            postalCode:
-              type: string
-              example: "10001"
-            country:
-              type: string
-              example: "USA"
-        costCenter:
-          type: string
-          description: Cost center code
-          example: "CC-IT-001"
-        project:
-          type: string
-          description: Project code if applicable
-          example: "PROJ-2024-001"
-        justification:
-          type: string
-          description: Business justification for the purchase
-          example: "Required for new team members starting next month"
-        urgency:
-          type: string
-          enum: [LOW, MEDIUM, HIGH, CRITICAL]
-          default: MEDIUM
-          description: Urgency level of the request
-        lineItems:
-          type: array
-          minItems: 1
-          items:
-            $ref: '#/components/schemas/LineItem'
-            
-    LineItem:
-      type: object
-      required:
-        - itemType
-        - quantity
-        - unitPrice
-      properties:
-        itemType:
-          type: string
-          enum: [CATALOG, FREE_TEXT]
-          description: Type of line item
-          example: "CATALOG"
-        catalogItemId:
-          type: string
-          description: Required when itemType is CATALOG. ID from catalog search
-          example: "CAT-12345"
-        description:
-          type: string
-          description: Required when itemType is FREE_TEXT. Description of the item
-          example: "Custom consulting services"
-        category:
-          type: string
-          description: Category for free text items
-          example: "Professional Services"
-        quantity:
-          type: integer
-          minimum: 1
-          description: Quantity to order
-          example: 2
-        unit:
-          type: string
-          description: Unit of measure
-          default: "EA"
-          example: "EA"
-        unitPrice:
-          type: number
-          format: double
-          minimum: 0
-          description: Unit price
-          example: 1299.99
+        requester:
+          $ref: '#/components/schemas/Requester'
         currency:
           type: string
-          default: "USD"
-          description: Currency code
+          description: Currency code for the requisition
           example: "USD"
-        totalPrice:
-          type: number
-          format: double
-          description: Total price (quantity * unitPrice). If not provided, will be calculated
-          example: 2599.98
-        notes:
+        neededBy:
           type: string
-          description: Additional notes for this line item
-          example: "Preferred delivery by end of month"
-          
-    PurchaseRequisitionResponse:
+          format: date
+          description: Date when items are needed (YYYY-MM-DD)
+          example: "2025-10-15"
+        shipTo:
+          $ref: '#/components/schemas/ShippingAddress'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequisitionItem'
+          minItems: 1
+        justification:
+          type: string
+          description: Business justification for the requisition
+          example: "New hires"
+
+    RequisitionResponse:
       type: object
+      required:
+        - requisitionId
+        - status
+        - totalAmount
+        - createdAt
       properties:
         requisitionId:
           type: string
           description: Unique identifier for the created requisition
-          example: "PR-2024-001234"
+          example: "REQ-2025-001234"
         status:
           type: string
-          enum: [PENDING_APPROVAL, APPROVED, REJECTED]
           description: Current status of the requisition
-          example: "PENDING_APPROVAL"
+          enum: ["DRAFT", "SUBMITTED", "APPROVED", "REJECTED", "CANCELLED"]
+          example: "SUBMITTED"
         totalAmount:
           type: number
           format: double
           description: Total amount of the requisition
-          example: 5199.96
+          example: 99.98
         currency:
           type: string
           description: Currency of the total amount
           example: "USD"
-        estimatedDeliveryDate:
-          type: string
-          format: date
-          description: Estimated delivery date for the items
-          example: "2024-09-15"
         createdAt:
           type: string
           format: date-time
           description: Timestamp when requisition was created
-          example: "2024-08-21T10:30:00Z"
-        approvalRequired:
-          type: boolean
-          description: Whether approval is required based on amount/policies
-          example: true
-        links:
-          type: object
-          properties:
-            self:
-              type: string
-              format: uri
-              description: Link to view this requisition
-              example: "https://api.example.com/v1/purchase-requisitions/PR-2024-001234"
-            approval:
-              type: string
-              format: uri
-              description: Link to approval workflow if applicable
-              example: "https://api.example.com/v1/approvals/APR-2024-005678"
-              
+          example: "2025-09-25T14:30:00.000Z"
+        requester:
+          $ref: '#/components/schemas/Requester'
+        neededBy:
+          type: string
+          format: date
+          example: "2025-10-15"
+        shipTo:
+          $ref: '#/components/schemas/ShippingAddress'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequisitionItem'
+
+    Requester:
+      type: object
+      required:
+        - id
+        - name
+        - email
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the requester
+          example: "u-10023"
+        name:
+          type: string
+          description: Full name of the requester
+          example: "Jane Doe"
+        email:
+          type: string
+          format: email
+          description: Email address of the requester
+          example: "jane.doe@company.com"
+
+    ShippingAddress:
+      type: object
+      required:
+        - name
+        - addressLine1
+        - city
+        - country
+      properties:
+        name:
+          type: string
+          description: Name of the shipping location
+          example: "Main Warehouse"
+        addressLine1:
+          type: string
+          description: Primary address line
+          example: "123 Example St"
+        addressLine2:
+          type: string
+          description: Secondary address line (optional)
+          example: "Suite 100"
+        city:
+          type: string
+          description: City name
+          example: "Austin"
+        state:
+          type: string
+          description: State or province code
+          example: "TX"
+        postalCode:
+          type: string
+          description: Postal or ZIP code
+          example: "78701"
+        country:
+          type: string
+          description: Country code (ISO 3166-1 alpha-2)
+          example: "US"
+
+    RequisitionItem:
+      type: object
+      required:
+        - lineNo
+        - catalogId
+        - description
+        - quantity
+        - uom
+        - unitPrice
+        - currency
+        - supplier
+      properties:
+        lineNo:
+          type: integer
+          description: Line number for ordering
+          minimum: 1
+          example: 1
+        catalogId:
+          type: string
+          description: Reference to catalog item ID
+          example: "CAT-000123"
+        description:
+          type: string
+          description: Description of the item
+          example: "USB-C Hub (6-port)"
+        quantity:
+          type: integer
+          description: Quantity requested
+          minimum: 1
+          example: 2
+        uom:
+          type: string
+          description: Unit of measure
+          example: "EA"
+        unitPrice:
+          type: number
+          format: double
+          description: Unit price of the item
+          minimum: 0
+          example: 49.99
+        currency:
+          type: string
+          description: Currency code for the unit price
+          example: "USD"
+        supplier:
+          $ref: '#/components/schemas/Supplier'
+        commodityCode:
+          type: string
+          description: UNSPSC commodity code (optional)
+          example: "43211601"
+
+    Supplier:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the supplier
+          example: "SUP-1001"
+        name:
+          type: string
+          description: Name of the supplier
+          example: "Acme Supplies"
+        
     Error:
       type: object
       required:
@@ -232,18 +278,40 @@ components:
       properties:
         code:
           type: string
-          example: "VALIDATION_ERROR"
+          example: "INVALID_REQUEST"
         message:
           type: string
-          example: "Invalid request data"
-        details:
-          type: array
-          items:
-            type: object
-            properties:
-              field:
-                type: string
-                example: "lineItems[0].catalogItemId"
-              message:
-                type: string
-                example: "Catalog item ID is required for CATALOG type items"
+          example: "Search term is required"
+    
+    RateLimitError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: integer
+              example: 429
+            message:
+              type: string
+              example: "Too Many Requests - Rate limit exceeded"
+            details:
+              type: string
+              example: "Please retry after 5 seconds"
+            timestamp:
+              type: string
+              format: date-time
+              example: "2024-01-15T10:30:00.000Z"
+            retryAfter:
+              type: integer
+              description: Seconds to wait before retrying
+              example: 5
+            attemptNumber:
+              type: integer
+              description: Current attempt number (for testing)
+              example: 1
