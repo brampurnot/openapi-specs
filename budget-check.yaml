@@ -1,0 +1,131 @@
+openapi: 3.0.3
+info:
+  title: Budget Check API
+  description: API for checking budget availability with rate limiting support
+  version: 1.0.0
+servers:
+  - url: http://localhost:3069/m1/1044590-1031883-default
+    description: Production server
+paths:
+  /budget/check:
+    post:
+      summary: Check budget availability
+      description: Check if sufficient budget is available for a given cost center and amount
+      operationId: budgetCheck
+      tags:
+        - Budget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetCheckRequest'
+            example:
+              cost-center: "CC0000001"
+              amount: 1000
+              currency: "USD"
+      responses:
+        '200':
+          description: Budget check completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetCheckResponse'
+        '400':
+          description: Bad request - invalid budget check data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too Many Requests - Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    BudgetCheckRequest:
+      type: object
+      required:
+        - cost-center
+        - amount
+        - currency
+      properties:
+        cost-center:
+          type: string
+          description: Cost center identifier
+          example: "CC0000001"
+        amount:
+          type: number
+          format: double
+          description: Amount to check against budget
+          minimum: 0
+          example: 1000
+        currency:
+          type: string
+          description: Currency code for the amount
+          example: "USD"
+
+    BudgetCheckResponse:
+      type: object
+      required:
+        - approved
+      properties:
+        approved:
+          type: boolean
+          description: Whether the budget check was approved
+          example: true
+        
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_REQUEST"
+        message:
+          type: string
+          example: "Cost center is required"
+    
+    RateLimitError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: integer
+              example: 429
+            message:
+              type: string
+              example: "Too Many Requests - Rate limit exceeded"
+            details:
+              type: string
+              example: "Please retry after 5 seconds"
+            timestamp:
+              type: string
+              format: date-time
+              example: "2024-01-15T10:30:00.000Z"
+            retryAfter:
+              type: integer
+              description: Seconds to wait before retrying
+              example: 5
+            attemptNumber:
+              type: integer
+              description: Current attempt number (for testing)
+              example: 1
