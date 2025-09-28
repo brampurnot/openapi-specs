@@ -1,0 +1,59 @@
+openapi: 3.0.3
+info:
+  title: Procurement Policy API
+  description: API for procurement policy management
+  version: 1.0.0
+servers:
+  - url: http://localhost:3069/m1/1044590-1031883-default
+    description: Production server
+paths:
+  /procurement/policy:
+    get:
+      summary: Get procurement policy
+      description: Retrieve the current procurement policy document
+      operationId: getProcurementPolicy
+      tags:
+        - Procurement
+      responses:
+        '200':
+          description: Procurement policy retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcurementPolicyResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    ProcurementPolicyResponse:
+      type: object
+      required:
+        - policy_type
+        - policy
+      properties:
+        policy_type:
+          type: string
+          description: Type of policy document
+          example: "procurement"
+        policy:
+          type: string
+          description: The complete procurement policy document in markdown format
+          example: "# Procurement Policy\n\n## Purpose\nThis policy establishes guidelines and procedures for all procurement activities to ensure compliance, cost control, and operational efficiency.\n\n## Scope\nThis policy applies to all employees and departments involved in purchasing goods and services on behalf of the organization.\n\n## Procurement Categories\n\n### Indirect Procurement\nIndirect procurement covers all goods and services not directly related to production or core business operations, including but not limited to office supplies, IT equipment, facilities services, travel, and professional services.\n\nRequirements for Indirect Procurement:\n- All indirect purchases MUST be made through the approved procurement catalog\n- Budget verification is MANDATORY before any purchase can be processed\n- No exceptions will be made to the catalog requirement\n- Purchases outside the catalog require pre-approval from the Procurement Manager\n\n### Direct Procurement\nDirect procurement covers all materials, components, and services directly related to production or core business operations.\n\nRequirements for Direct Procurement:\n- Must follow established planning processes\n- Budget checks are not required for plan-driven direct procurement\n- Purchases must align with approved production schedules and forecasts\n- Supplier contracts and agreements must be in place"
+        
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "INVALID_REQUEST"
+        message:
+          type: string
+          example: "Internal server error"
