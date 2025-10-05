@@ -1,0 +1,316 @@
+openapi: 3.0.3
+info:
+  title: Gmail API - Messages
+  description: OpenAPI specification for reading Gmail messages using the Gmail API
+  version: 1.0.0
+  contact:
+    name: Google Gmail API
+    url: https://developers.google.com/gmail/api
+  license:
+    name: Google APIs Terms of Service
+    url: https://developers.google.com/terms
+
+servers:
+  - url: https://gmail.googleapis.com/gmail/v1
+    description: Gmail API production server
+
+security:
+  - OAuth2:
+      - https://www.googleapis.com/auth/gmail.readonly
+
+paths:
+  /users/{userId}/messages:
+    get:
+      summary: List messages
+      description: Lists the messages in the user's mailbox
+      operationId: listMessages
+      tags:
+        - Messages
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The user's email address. The special value 'me' can be used to indicate the authenticated user.
+          schema:
+            type: string
+            default: me
+        - name: maxResults
+          in: query
+          description: Maximum number of messages to return (1-500)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+        - name: pageToken
+          in: query
+          description: Page token to retrieve a specific page of results
+          schema:
+            type: string
+        - name: q
+          in: query
+          description: Query string for filtering messages (same syntax as Gmail search)
+          schema:
+            type: string
+          example: "from:example@gmail.com is:unread"
+        - name: labelIds
+          in: query
+          description: Only return messages with labels that match all of the specified label IDs
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: ["INBOX", "UNREAD"]
+        - name: includeSpamTrash
+          in: query
+          description: Include messages from SPAM and TRASH in the results
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMessagesResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{userId}/messages/{id}:
+    get:
+      summary: Get message
+      description: Gets the specified message
+      operationId: getMessage
+      tags:
+        - Messages
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The user's email address. The special value 'me' can be used to indicate the authenticated user.
+          schema:
+            type: string
+            default: me
+        - name: id
+          in: path
+          required: true
+          description: The ID of the message to retrieve
+          schema:
+            type: string
+        - name: format
+          in: query
+          description: The format to return the message in
+          schema:
+            type: string
+            enum: [minimal, full, raw, metadata]
+            default: full
+        - name: metadataHeaders
+          in: query
+          description: When given and format is METADATA, only include headers specified
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: true
+          example: ["From", "To", "Subject"]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description: OAuth 2.0 authorization
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            https://www.googleapis.com/auth/gmail.readonly: Read all resources and their metadata (no write access)
+            https://www.googleapis.com/auth/gmail.modify: Read, compose, and send messages from your Gmail account
+            https://mail.google.com/: Full access to Gmail account
+
+  schemas:
+    ListMessagesResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          description: List of messages
+          items:
+            $ref: '#/components/schemas/MessageListItem'
+        nextPageToken:
+          type: string
+          description: Token to retrieve the next page of results
+        resultSizeEstimate:
+          type: integer
+          description: Estimated total number of results
+
+    MessageListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The immutable ID of the message
+        threadId:
+          type: string
+          description: The ID of the thread the message belongs to
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The immutable ID of the message
+        threadId:
+          type: string
+          description: The ID of the thread the message belongs to
+        labelIds:
+          type: array
+          description: List of IDs of labels applied to this message
+          items:
+            type: string
+        snippet:
+          type: string
+          description: A short part of the message text
+        historyId:
+          type: string
+          description: The ID of the last history record that modified this message
+        internalDate:
+          type: string
+          description: The internal message creation timestamp (epoch ms)
+        payload:
+          $ref: '#/components/schemas/MessagePart'
+        sizeEstimate:
+          type: integer
+          description: Estimated size in bytes of the message
+        raw:
+          type: string
+          description: The entire email message in base64url encoded string (only present when format=raw)
+
+    MessagePart:
+      type: object
+      properties:
+        partId:
+          type: string
+          description: The immutable ID of the message part
+        mimeType:
+          type: string
+          description: The MIME type of the message part
+        filename:
+          type: string
+          description: The filename of the attachment
+        headers:
+          type: array
+          description: List of headers on this message part
+          items:
+            $ref: '#/components/schemas/MessagePartHeader'
+        body:
+          $ref: '#/components/schemas/MessagePartBody'
+        parts:
+          type: array
+          description: The child MIME message parts of this part (for multipart MIME types)
+          items:
+            $ref: '#/components/schemas/MessagePart'
+
+    MessagePartHeader:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the header
+        value:
+          type: string
+          description: The value of the header
+
+    MessagePartBody:
+      type: object
+      properties:
+        attachmentId:
+          type: string
+          description: When present, contains the ID of an external attachment
+        size:
+          type: integer
+          description: Number of bytes for the message part data
+        data:
+          type: string
+          description: The body data of a MIME message part as a base64url encoded string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+              description: HTTP status code
+            message:
+              type: string
+              description: Error message
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  domain:
+                    type: string
+                  reason:
+                    type: string
+                  message:
+                    type: string
