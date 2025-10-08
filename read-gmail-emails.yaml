@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Gmail API - Messages
-  description: OpenAPI specification for reading Gmail messages using the Gmail API
+  description: OpenAPI specification for reading and modifying Gmail messages
   version: 1.0.0
   contact:
     name: Google Gmail API
@@ -26,6 +26,9 @@ paths:
       operationId: listMessages
       tags:
         - Messages
+      security:
+        - OAuth2:
+            - https://www.googleapis.com/auth/gmail.readonly
       parameters:
         - name: userId
           in: path
@@ -52,7 +55,7 @@ paths:
           description: Query string for filtering messages (same syntax as Gmail search)
           schema:
             type: string
-          example: "from:example@gmail.com is:unread"
+          example: "is:unread"
         - name: labelIds
           in: query
           description: Only return messages with labels that match all of the specified label IDs
@@ -62,7 +65,6 @@ paths:
               type: string
           style: form
           explode: true
-          example: ["INBOX", "UNREAD"]
         - name: includeSpamTrash
           in: query
           description: Include messages from SPAM and TRASH in the results
@@ -88,18 +90,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 
   /users/{userId}/messages/{id}:
     get:
@@ -108,6 +98,9 @@ paths:
       operationId: getMessage
       tags:
         - Messages
+      security:
+        - OAuth2:
+            - https://www.googleapis.com/auth/gmail.readonly
       parameters:
         - name: userId
           in: path
@@ -138,7 +131,6 @@ paths:
               type: string
           style: form
           explode: true
-          example: ["From", "To", "Subject"]
       responses:
         '200':
           description: Successful response
@@ -152,32 +144,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 
   /users/{userId}/messages/{id}/modify:
     post:
       summary: Modify message labels
-      description: Modifies the labels on the specified message. This can be used to mark as read/unread or move to folders
+      description: Modifies the labels on the specified message
       operationId: modifyMessage
       tags:
         - Messages
+      security:
+        - OAuth2:
+            - https://www.googleapis.com/auth/gmail.modify
       parameters:
         - name: userId
           in: path
@@ -197,25 +174,23 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ModifyMessageRequest'
+              type: object
+              properties:
+                addLabelIds:
+                  type: array
+                  description: A list of label IDs to add to the message
+                  items:
+                    type: string
+                removeLabelIds:
+                  type: array
+                  description: A list of label IDs to remove from the message
+                  items:
+                    type: string
             examples:
               markAsRead:
-                summary: Mark message as read
+                summary: Mark as read
                 value:
                   removeLabelIds: ["UNREAD"]
-              markAsUnread:
-                summary: Mark message as unread
-                value:
-                  addLabelIds: ["UNREAD"]
-              moveToFolder:
-                summary: Move to a folder (label)
-                value:
-                  addLabelIds: ["Label_123"]
-                  removeLabelIds: ["INBOX"]
-              archive:
-                summary: Archive message (remove from inbox)
-                value:
-                  removeLabelIds: ["INBOX"]
       responses:
         '200':
           description: Successful response
@@ -223,53 +198,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Message'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /users/{userId}/labels:
-    get:
-      summary: List labels
-      description: Lists all labels in the user's mailbox
-      operationId: listLabels
-      tags:
-        - Labels
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          description: The user's email address. The special value 'me' can be used to indicate the authenticated user.
-          schema:
-            type: string
-            default: me
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ListLabelsResponse'
         '400':
           description: Bad request
           content:
@@ -293,9 +221,8 @@ components:
           authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
           tokenUrl: https://oauth2.googleapis.com/token
           scopes:
-            https://www.googleapis.com/auth/gmail.readonly: Read all resources and their metadata (no write access)
-            https://www.googleapis.com/auth/gmail.modify: Read, compose, and send messages from your Gmail account
-            https://mail.google.com/: Full access to Gmail account
+            https://www.googleapis.com/auth/gmail.readonly: Read all resources and their metadata
+            https://www.googleapis.com/auth/gmail.modify: Read, compose, and send messages
 
   schemas:
     ListMessagesResponse:
@@ -303,80 +230,62 @@ components:
       properties:
         messages:
           type: array
-          description: List of messages
           items:
             $ref: '#/components/schemas/MessageListItem'
         nextPageToken:
           type: string
-          description: Token to retrieve the next page of results
         resultSizeEstimate:
           type: integer
-          description: Estimated total number of results
 
     MessageListItem:
       type: object
       properties:
         id:
           type: string
-          description: The immutable ID of the message
         threadId:
           type: string
-          description: The ID of the thread the message belongs to
 
     Message:
       type: object
       properties:
         id:
           type: string
-          description: The immutable ID of the message
         threadId:
           type: string
-          description: The ID of the thread the message belongs to
         labelIds:
           type: array
-          description: List of IDs of labels applied to this message
           items:
             type: string
         snippet:
           type: string
-          description: A short part of the message text
         historyId:
           type: string
-          description: The ID of the last history record that modified this message
         internalDate:
           type: string
-          description: The internal message creation timestamp (epoch ms)
         payload:
           $ref: '#/components/schemas/MessagePart'
         sizeEstimate:
           type: integer
-          description: Estimated size in bytes of the message
         raw:
           type: string
-          description: The entire email message in base64url encoded string (only present when format=raw)
 
     MessagePart:
       type: object
       properties:
         partId:
           type: string
-          description: The immutable ID of the message part
         mimeType:
           type: string
-          description: The MIME type of the message part
         filename:
           type: string
-          description: The filename of the attachment
         headers:
           type: array
-          description: List of headers on this message part
           items:
             $ref: '#/components/schemas/MessagePartHeader'
         body:
           $ref: '#/components/schemas/MessagePartBody'
         parts:
           type: array
-          description: The child MIME message parts of this part (for multipart MIME types)
           items:
             $ref: '#/components/schemas/MessagePart'
 
@@ -385,70 +294,18 @@ components:
       properties:
         name:
           type: string
-          description: The name of the header
         value:
           type: string
-          description: The value of the header
 
     MessagePartBody:
       type: object
       properties:
         attachmentId:
           type: string
-          description: When present, contains the ID of an external attachment
         size:
           type: integer
-          description: Number of bytes for the message part data
         data:
           type: string
-          description: The body data of a MIME message part as a base64url encoded string
-
-    ModifyMessageRequest:
-      type: object
-      properties:
-        addLabelIds:
-          type: array
-          description: A list of label IDs to add to the message
-          items:
-            type: string
-          example: ["UNREAD", "INBOX"]
-        removeLabelIds:
-          type: array
-          description: A list of label IDs to remove from the message
-          items:
-            type: string
-          example: ["UNREAD"]
-
-    ListLabelsResponse:
-      type: object
-      properties:
-        labels:
-          type: array
-          description: List of labels
-          items:
-            $ref: '#/components/schemas/Label'
-
-    Label:
-      type: object
-      properties:
-        id:
-          type: string
-          description: The immutable ID of the label
-        name:
-          type: string
-          description: The display name of the label
-        type:
-          type: string
-          description: The owner type for the label
-          enum: [system, user]
-        messageListVisibility:
-          type: string
-          description: The visibility of messages with this label in the message list
-          enum: [show, hide]
-        labelListVisibility:
-          type: string
-          description: The visibility of the label in the label list
-          enum: [labelShow, labelShowIfUnread, labelHide]
 
     Error:
       type: object
@@ -458,18 +315,9 @@ components:
           properties:
             code:
               type: integer
-              description: HTTP status code
             message:
               type: string
-              description: Error message
             errors:
               type: array
               items:
                 type: object
-                properties:
-                  domain:
-                    type: string
-                  reason:
-                    type: string
-                  message:
-                    type: string
