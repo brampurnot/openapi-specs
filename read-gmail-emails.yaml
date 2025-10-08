@@ -16,7 +16,7 @@ servers:
 
 security:
   - OAuth2:
-      - https://www.googleapis.com/auth/gmail.readonly
+      - https://www.googleapis.com/auth/gmail.modify
 
 paths:
   /users/{userId}/messages:
@@ -171,6 +171,118 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /users/{userId}/messages/{id}/modify:
+    post:
+      summary: Modify message labels
+      description: Modifies the labels on the specified message. This can be used to mark as read/unread or move to folders
+      operationId: modifyMessage
+      tags:
+        - Messages
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The user's email address. The special value 'me' can be used to indicate the authenticated user.
+          schema:
+            type: string
+            default: me
+        - name: id
+          in: path
+          required: true
+          description: The ID of the message to modify
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyMessageRequest'
+            examples:
+              markAsRead:
+                summary: Mark message as read
+                value:
+                  removeLabelIds: ["UNREAD"]
+              markAsUnread:
+                summary: Mark message as unread
+                value:
+                  addLabelIds: ["UNREAD"]
+              moveToFolder:
+                summary: Move to a folder (label)
+                value:
+                  addLabelIds: ["Label_123"]
+                  removeLabelIds: ["INBOX"]
+              archive:
+                summary: Archive message (remove from inbox)
+                value:
+                  removeLabelIds: ["INBOX"]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/{userId}/labels:
+    get:
+      summary: List labels
+      description: Lists all labels in the user's mailbox
+      operationId: listLabels
+      tags:
+        - Labels
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The user's email address. The special value 'me' can be used to indicate the authenticated user.
+          schema:
+            type: string
+            default: me
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListLabelsResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     OAuth2:
@@ -290,6 +402,53 @@ components:
         data:
           type: string
           description: The body data of a MIME message part as a base64url encoded string
+
+    ModifyMessageRequest:
+      type: object
+      properties:
+        addLabelIds:
+          type: array
+          description: A list of label IDs to add to the message
+          items:
+            type: string
+          example: ["UNREAD", "INBOX"]
+        removeLabelIds:
+          type: array
+          description: A list of label IDs to remove from the message
+          items:
+            type: string
+          example: ["UNREAD"]
+
+    ListLabelsResponse:
+      type: object
+      properties:
+        labels:
+          type: array
+          description: List of labels
+          items:
+            $ref: '#/components/schemas/Label'
+
+    Label:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The immutable ID of the label
+        name:
+          type: string
+          description: The display name of the label
+        type:
+          type: string
+          description: The owner type for the label
+          enum: [system, user]
+        messageListVisibility:
+          type: string
+          description: The visibility of messages with this label in the message list
+          enum: [show, hide]
+        labelListVisibility:
+          type: string
+          description: The visibility of the label in the label list
+          enum: [labelShow, labelShowIfUnread, labelHide]
 
     Error:
       type: object
