@@ -234,25 +234,16 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                raw:
-                  type: string
-                  description: The entire email message in base64url encoded string format (RFC 2822 formatted)
-                threadId:
-                  type: string
-                  description: The ID of the thread the message belongs to (optional, for replies)
-              required:
-                - raw
+              $ref: '#/components/schemas/SendMessageRequest'
             examples:
               simpleEmail:
                 summary: Simple email
                 value:
-                  raw: "VG86IHJlY2lwaWVudEBleGFtcGxlLmNvbQpTdWJqZWN0OiBIZWxsbyBXb3JsZApDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgKCkhlbGxvLCB0aGlzIGlzIGEgdGVzdCBlbWFpbCE="
-              replyEmail:
-                summary: Reply to thread
+                  raw: "RnJvbTogc2VuZGVyQGV4YW1wbGUuY29tDQpUbzogcmVjaXBpZW50QGV4YW1wbGUuY29tDQpTdWJqZWN0OiBIZWxsbyBXb3JsZA0KDQpIZWxsbywgdGhpcyBpcyBhIHRlc3QgZW1haWwhDQo="
+              replyToThread:
+                summary: Reply to existing thread
                 value:
-                  raw: "VG86IHJlY2lwaWVudEBleGFtcGxlLmNvbQpTdWJqZWN0OiBSZTogUHJldmlvdXMgU3ViamVjdApDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgKCkhlbGxvLCB0aGlzIGlzIGEgcmVwbHkhCg=="
+                  raw: "RnJvbTogc2VuZGVyQGV4YW1wbGUuY29tDQpUbzogcmVjaXBpZW50QGV4YW1wbGUuY29tDQpTdWJqZWN0OiBSZTogUHJldmlvdXMgU3ViamVjdA0KDQpUaGlzIGlzIGEgcmVwbHkh"
                   threadId: "1234567890abcdef"
       responses:
         '200':
@@ -308,6 +299,19 @@ components:
           type: string
         threadId:
           type: string
+
+    SendMessageRequest:
+      type: object
+      description: Request to send an email message
+      properties:
+        raw:
+          type: string
+          description: The entire email message in base64url encoded string format (RFC 2822 formatted and base64url encoded)
+        threadId:
+          type: string
+          description: The ID of the thread the message belongs to (optional, for sending replies within an existing thread)
+      required:
+        - raw
 
     Message:
       type: object
