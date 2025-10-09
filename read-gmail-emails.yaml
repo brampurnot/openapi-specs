@@ -211,6 +211,69 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /users/{userId}/messages/send:
+    post:
+      summary: Send email
+      description: Sends the specified message to the recipients in the To, Cc, and Bcc headers
+      operationId: sendMessage
+      tags:
+        - Messages
+      security:
+        - OAuth2:
+            - https://www.googleapis.com/auth/gmail.send
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The user's email address. The special value 'me' can be used to indicate the authenticated user.
+          schema:
+            type: string
+            default: me
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                raw:
+                  type: string
+                  description: The entire email message in base64url encoded string format (RFC 2822 formatted)
+                threadId:
+                  type: string
+                  description: The ID of the thread the message belongs to (optional, for replies)
+              required:
+                - raw
+            examples:
+              simpleEmail:
+                summary: Simple email
+                value:
+                  raw: "VG86IHJlY2lwaWVudEBleGFtcGxlLmNvbQpTdWJqZWN0OiBIZWxsbyBXb3JsZApDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgKCkhlbGxvLCB0aGlzIGlzIGEgdGVzdCBlbWFpbCE="
+              replyEmail:
+                summary: Reply to thread
+                value:
+                  raw: "VG86IHJlY2lwaWVudEBleGFtcGxlLmNvbQpTdWJqZWN0OiBSZTogUHJldmlvdXMgU3ViamVjdApDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgKCkhlbGxvLCB0aGlzIGlzIGEgcmVwbHkhCg=="
+                  threadId: "1234567890abcdef"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     OAuth2:
@@ -223,6 +286,7 @@ components:
           scopes:
             https://www.googleapis.com/auth/gmail.readonly: Read all resources and their metadata
             https://www.googleapis.com/auth/gmail.modify: Read, compose, and send messages
+            https://www.googleapis.com/auth/gmail.send: Send email on behalf of the user
 
   schemas:
     ListMessagesResponse:
