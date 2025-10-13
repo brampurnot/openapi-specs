@@ -4,7 +4,7 @@ info:
   description: API for checking budget availability with rate limiting support
   version: 1.0.0
 servers:
-  - url: http://localhost:3069/m1/1044590-1031883-default
+  - url: https://mockoon.flunq.io/m1/1044590-1031883-default
     description: Production server
 paths:
   /budget/check:
