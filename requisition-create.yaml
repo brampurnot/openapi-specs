@@ -4,7 +4,7 @@ info:
   description: API for searching catalog items with rate limiting support and creating purchase requisitions
   version: 1.0.0
 servers:
-  - url: http://localhost:3069/m1/1044590-1031883-default
+  - url: https://mockoon.flunq.io/m1/1044590-1031883-default
     description: Production server
 paths:
   /requisition/create:
